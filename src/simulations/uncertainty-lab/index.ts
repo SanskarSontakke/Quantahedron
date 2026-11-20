@@ -204,7 +204,10 @@ const telemetry: SimModule['telemetry'] = (p) => {
   const sigmaX = numParam(p, 'sigmaX', 0);
   const sigmaP = numParam(p, 'sigmaP', 0);
   const product = numParam(p, 'product', 0);
-  const analytic = numParam(p, 'analyticProduct', 0);
+  const sigma = Math.max(0.02, numParam(p, 'width', 0.6));
+  const chirp = numParam(p, 'chirp', 0);
+  // Closed form, straight from the controls — no round trip through the canvas.
+  const analytic = sigma * Math.sqrt(1 / (4 * sigma * sigma) + chirp * chirp * sigma * sigma);
   const norm = numParam(p, 'waveNorm', 0);
   const ratio = product / HEISENBERG_FLOOR;
   const live = norm > 1e-9 && product > 0;

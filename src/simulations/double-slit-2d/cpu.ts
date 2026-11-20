@@ -50,7 +50,7 @@ function makeScratch(side: number): Scratch | null {
   return { canvas, ctx, img, px: img.data, side };
 }
 
-/** Lattice → RGBA image, mirroring the shader's log tone map and phase wheel. */
+/** Lattice → RGBA image, on the shader's log tone map with the platform wheel. */
 function paint(scratch: Scratch, re: Float32Array, im: Float32Array, N: number, opts: SlitDrawOptions): void {
   const side = scratch.side;
   const px = scratch.px;

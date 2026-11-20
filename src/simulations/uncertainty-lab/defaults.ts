@@ -21,8 +21,6 @@ export const uncertaintyDefaults: SimParams = {
   evolveTime: 0,
   dt: 0.0008,
 
-  showPosition: true,
-  showMomentum: true,
   showPhase: true,
   showGauge: true,
   logMagnitude: false,

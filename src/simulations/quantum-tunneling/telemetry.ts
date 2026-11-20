@@ -104,14 +104,14 @@ export function tunnelTelemetry(p: SimParams): TelemetryItem[] {
       hint: `T(E₀) = ${sig(tExact, 4)}; the packet's high-energy tail always leaks first`,
     },
     {
-      label: 'Resonance condition',
+      label: 'Unitarity resonances',
       value:
         resonances.length === 0
-          ? 'none (single barrier)'
-          : `k·gap = nπ → E₁ = ${resonances[0].toFixed(3)}`,
+          ? 'none in the window'
+          : `${resonances.length} modes, first at E = ${resonances[0].toFixed(3)}`,
       hint: resonances.length
-        ? `${resonances.length} modes below E = ${v.toFixed(1)}; nearest to E₀ is ${nearest.toFixed(3)} (Δ = ${Math.abs(nearest - e0).toFixed(3)}), where T = ${sig(analyticalT(p, nearest), 6)}`
-        : 'switch to the double barrier to open the Fabry–Pérot cavity',
+        ? `${resonances.length} points below E = ${v.toFixed(1)}; nearest to E₀ is ${nearest.toFixed(3)} (Δ = ${Math.abs(nearest - e0).toFixed(3)}), where T = ${sig(analyticalT(p, nearest), 6)}${barrierOf(p) === 'double' ? ' — barrier penetration pulls the cavity modes below n²π²/2·gap²' : ''}`
+        : 'thicken the barrier or switch to the double well to open the Fabry–Pérot comb',
       tone: resonances.length ? 'good' : 'default',
     },
     {

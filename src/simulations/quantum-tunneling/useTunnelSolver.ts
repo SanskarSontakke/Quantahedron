@@ -28,9 +28,11 @@ import { useCallback, useMemo, useRef, type RefObject } from 'react';
 import { diagnostics, type StateDiagnostics } from '@/engine/physics/crankNicolson';
 import { SplitStepPropagator } from '@/engine/physics/splitStepFFT';
 import type { SimParams } from '@/simulations/types';
+import { pNum } from '@/store/useSimStore';
 import {
   barrierChangeSig,
   buildTunnelSetup,
+  clampNum,
   liveTunnel,
   packetSig,
   publishTunnelLive,
@@ -239,6 +241,7 @@ export function useTunnelSolver(): TunnelSolver {
       const s = stateRef.current;
       const bar = barrierChangeSig(p);
       const pack = packetSig(p);
+      const dtWant = clampNum(pNum(p, 'dt', 0.002), 2e-4, 0.01);
 
       if (!s.setup || bar !== s.barSig) {
         const setup = buildTunnelSetup(p);
@@ -272,9 +275,12 @@ export function useTunnelSolver(): TunnelSolver {
         }
       }
 
-      if (s.setup.dt !== s.dtSig) {
-        s.dtSig = s.setup.dt;
-        install({ ...s.setup, dt: s.setup.dt }, true);
+      /* Δt lives outside both signatures: retune the propagator, keep ψ flying. */
+      if (s.dtSig !== dtWant) {
+        const setup: TunnelSetup = { ...s.setup, dt: dtWant };
+        s.setup = setup;
+        s.dtSig = dtWant;
+        install(setup, true);
       }
 
       advance(steps);

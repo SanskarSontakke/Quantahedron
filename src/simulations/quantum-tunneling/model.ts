@@ -231,19 +231,43 @@ export function wkbT(p: SimParams, e: number): number {
 }
 
 /**
- * Resonance energies of the well between two barriers, from the exact
- * Fabry–Pérot condition k_well·gap = nπ ⇒ E_n = n²π²ℏ²/(2m·gap²).
- * Empty unless the double-barrier geometry is active.
+ * Energies inside the plotted window where the exact T(E) of the *displayed* profile
+ * touches 1 — the unitarity resonances: the Ramsauer–Townsend points of a single
+ * barrier (k₂a = nπ) and the Fabry–Pérot comb of the double barrier.
+ *
+ * They are located numerically on the analytic curve and refined by trisection,
+ * because the textbook estimate E_n = n²π²ℏ²/(2m·gap²) ignores the wave spilling
+ * into the barriers. For the default double structure (a = 1.2, gap = 2.4 a.u.) that
+ * estimate puts the first cavity mode at 0.857 where the exact transmission is
+ * 1.5×10⁻¹⁰; the true T = 1 point sits at 0.624. Plotting the naive comb would mark
+ * resonances where nothing resonates, so the marks here are the real ones.
  */
-export function resonanceEnergies(p: SimParams, limit = eMaxOf(p)): number[] {
-  if (barrierOf(p) !== 'double') return [];
-  const g = geomOf(p);
-  const mass = massOf(p);
+export function resonanceEnergies(p: SimParams, limit = eMaxOf(p), samples = 1200): number[] {
+  const f = (e: number): number => analyticalT(p, e);
   const out: number[] = [];
-  for (let n = 1; n <= 24; n++) {
-    const e = ((n * Math.PI) ** 2 * hbarOf() ** 2) / (2 * mass * g.gap * g.gap);
-    if (e > limit) break;
-    out.push(e);
+  let ePrev = limit / samples;
+  let tPrev = f(ePrev);
+  let eLeft = 0;
+  let tLeft = f(Math.max(1e-4, limit / samples - 1e-9));
+  for (let i = 2; i <= samples; i++) {
+    const eRight = (limit * i) / samples;
+    const tRight = f(eRight);
+    if (tPrev > tLeft && tPrev >= tRight && tPrev > 1 - 1e-6) {
+      let lo = eLeft;
+      let hi = eRight;
+      for (let it = 0; it < 50; it++) {
+        const pa = lo + (hi - lo) / 3;
+        const pb = hi - (hi - lo) / 3;
+        if (f(pa) < f(pb)) lo = pa;
+        else hi = pb;
+      }
+      const r = 0.5 * (lo + hi);
+      if (f(r) > 1 - 1e-6) out.push(r);
+    }
+    eLeft = ePrev;
+    tLeft = tPrev;
+    ePrev = eRight;
+    tPrev = tRight;
   }
   return out;
 }

@@ -28,6 +28,7 @@ export const deBroglieDefaults: SimParams = {
   amplitude: 1,
   thickness: 2.2,
   spinPhase: 0,
+  sound: true, // three-partial chime the instant 2πr = nλ locks
   sweep: false,
   sweepSpeed: 0.25,
 

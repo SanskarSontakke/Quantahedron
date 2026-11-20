@@ -146,7 +146,8 @@ function tag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, 
 /**
  * Far-field pattern for the *current* geometry: single-slit sinc² envelope times
  * the two-slit fringe term, with sinθ taken exactly from the detector coordinate
- * and the fringe depth set by the measured visibility. Nothing is fitted.
+ * and the fringe depth set by the measured visibility. No parameter of the
+ * geometry is fitted: λ, d, w and sinθ all come from the solver configuration.
  */
 export function theoryAt(cfg: SlitConfig, u: number, visibility: number): number {
   const dy = u - 0.5;
@@ -281,7 +282,7 @@ function drawHud(ctx: CanvasRenderingContext2D, rt: Runtime, cfg: SlitConfig, h:
   const lines = [
     `λ=2π/p ${cfg.lambda.toFixed(4)}  d/λ ${(cfg.sep / cfg.lambda).toFixed(1)}`,
     `Δy pred ${pred.toFixed(4)}  meas ${rt.fringe > 0 ? rt.fringe.toFixed(4) : '—'}`,
-    `${kind}  N=${rt.engine?.N ?? cfg.N}  e⁻ ${rt.packets}  ‖ψ‖ ${rt.norm.toFixed(3)}`,
+    `${kind}  N=${rt.engine?.N ?? cfg.N}  e⁻ ${rt.packets}  ‖ψ‖² ${rt.norm.toFixed(3)}`,
   ];
   const bw = 196;
   const bh = 42;

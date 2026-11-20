@@ -248,11 +248,12 @@ const telemetry: SimModule['telemetry'] = (p) => {
   const packets = Math.round(pNum(p, 'packets', 0));
   const phi = (Math.PI / 2) * numParam(p, 'decoherence', 1);
   const vTheory = Math.abs(Math.cos(phi));
-  const dTheory = Math.abs(Math.sin(phi));
+  // With the marker switched off there is no path record at all, so D = 0.
   const on = p.whichPath === true;
+  const dTheory = on ? Math.abs(Math.sin(phi)) : 0;
   return [
     { label: 'λ = 2π/p', value: fmt(cfg.lambda), hint: 'domain units' },
-    { label: 'd / λ', value: fmt(cfg.sep / cfg.lambda, 1), hint: 'fringes inside the envelope' },
+    { label: 'd / λ', value: fmt(cfg.sep / cfg.lambda, 1), hint: 'highest visible order m ≤ d/λ' },
     { label: 'Δy = λL/d', value: fmt(dy), hint: `L = ${fmt(L, 3)}` },
     {
       label: 'Δy measured',
@@ -263,21 +264,33 @@ const telemetry: SimModule['telemetry'] = (p) => {
     {
       label: 'Visibility V',
       value: fmt(measured, 3),
-      hint: on ? `theory |cos φ| = ${fmt(vTheory, 3)}` : '(Imax−Imin)/(Imax+Imin)',
-      tone: on && measured < vTheory * 0.6 ? 'warn' : 'good',
+      hint: on ? `ceiling |cos φ| = ${fmt(vTheory, 3)}` : '(Imax−Imin)/(Imax+Imin)',
+      tone:
+        hits <= 60
+          ? 'default'
+          : on
+            ? measured > vTheory + 0.05
+              ? 'warn'
+              : 'good'
+            : measured > 0.5
+              ? 'good'
+              : 'warn',
     },
     {
       label: 'V² + D²',
       value: fmt(measured * measured + dTheory * dTheory, 3),
-      hint: on ? '≤ 1, saturated at equality' : 'detector off ⇒ D = 0',
-      tone: 'accent',
+      hint: on ? 'measured V against the ideal D = |sin φ|' : 'detector off ⇒ D = 0',
+      tone: measured * measured + dTheory * dTheory <= 1.02 ? 'good' : 'warn',
     },
     { label: 'Hits on screen', value: String(hits), hint: `${packets} electrons fired` },
     {
       label: '‖ψ‖² (lattice)',
       value: fmt(pNum(p, 'fieldNorm', 0), 3),
-      hint: 'Σ|ψ|² — 1.000 per electron in flight',
-      tone: pNum(p, 'fieldNorm', 0) > 1.02 || pNum(p, 'fieldNorm', 0) < 0.2 ? 'warn' : 'good',
+      hint: 'Σ|ψ|² on the grid — every emitted electron adds 1.000, the CAP and sponges drain it',
+      tone:
+        !Number.isFinite(pNum(p, 'fieldNorm', 0)) || pNum(p, 'fieldNorm', 0) === 0
+          ? 'default'
+          : 'good',
     },
     {
       label: 'Solver',
@@ -313,7 +326,7 @@ const math: SimModule['math'] = (p) => {
       {
         tex: 'V^2 + D^2 \\le 1',
         display: true,
-        note: 'Englert–Greenberger–Yasinov complementarity bound: path knowledge and fringe visibility trade off exactly.',
+        note: 'Englert–Greenberger–Yasinov complementarity bound: path knowledge and fringe visibility trade off along this curve, and the ±π/2 marker used here saturates it by construction.',
       },
     ],
     readout: [
@@ -331,7 +344,7 @@ const math: SimModule['math'] = (p) => {
     phaseLegend:
       'Hue is arg ψ on the shared twilight wheel — a wavefront sliding through the slits cycles hue while keeping its brightness. Luminance is |ψ|² only, so a bright band always means real probability, never a phase artefact. On the screen panel teal is the accumulated histogram, indigo the instantaneous |ψ|², amber dashes the d sinθ = mλ prediction.',
     intuition:
-      'Fire electrons one at a time and each one lands as a **single dot** — the detector never sees half an electron. Nothing about a lone hit suggests a wave. But after a few hundred dots the bands appear, exactly where $d\\sin\\theta = m\\lambda$ puts them, so the *probability distribution* is wavelike while the *event* is particle-like. In this solver that is not an add-on postulate: the field is a genuine complex wave obeying the 2D TDSE, and the dots are drawn from $|\\psi|^2$ at the detector line, one Poisson-distributed click at a time.\n\nThe which-path detector makes the trade visible. Marking one aperture with a random $\\pm\\varphi$ phase — the back-action of a path marker that *could* be read — leaves the two arms less mutually coherent, and the accumulated pattern slides from sharp fringes towards the incoherent sum of two single-slit diffraction peaks. Turn the marker up and the fringes go; turn it back down (a quantum eraser) and the *next* electrons restore them, because nothing was destroyed, only recorded.',
+      'Fire electrons one at a time and each one lands as a **single dot** — the detector never sees half an electron. Nothing about a lone hit suggests a wave. But after a few hundred dots the bands appear, where $d\\sin\\theta = m\\lambda$ puts them, so the *probability distribution* is wavelike while the *event* is particle-like. In this solver that is not an add-on postulate: the field is a genuine complex wave obeying the 2D TDSE, and the dots are drawn from $|\\psi|^2$ at the detector line, one Poisson-distributed click at a time.\n\nThe which-path detector makes the trade visible. Marking one arm with a random $\\pm\\varphi$ phase plate — the back-action of a path marker that *could* be read — leaves the two arms less mutually coherent, and the accumulated pattern slides from sharp fringes towards the incoherent sum of two single-slit diffraction peaks. Turn the marker up and the fringes go; turn it back down (a quantum eraser) and the *next* electrons restore them, because nothing was destroyed, only recorded.',
     derivation: [
       {
         title: 'From the stencil to the screen',
@@ -415,7 +428,7 @@ const math: SimModule['math'] = (p) => {
           'Set the detector somewhere in the middle (δ = 0.5) and let a few hundred electrons land. What visibility should the screen show, and does the measured one agree?',
         hint: 'φ = (π/2)·δ, and the ± coin leaves coherence cos φ — so V = |cos(π/4)| = 1/√2 before you look at the histogram.',
         answer:
-          'V should sit at ≈ 0.707 and V² + D² at 1. The measured value converges to it as hits accumulate; small-sample noise is Poisson, so double the hits to halve the relative scatter.',
+          'The ideal two-arm answer is V = |cos(π/4)| = 1/√2 ≈ 0.707 with V² + D² = 1, and the *shape* of the washout does follow |cos(πδ/2)|. It does not agree quantitatively: the measured column sits below V(0)·|cos φ| and keeps dropping, because the plate marks only the two-path cross term while the accumulated line still carries the single-slit envelope and a residual modulation the ± coin cannot reach, so at full decoherence V bottoms out at a few tenths instead of zero. More hits shrink the Poisson scatter of the measurement (quadruple the hits to halve it) but never pull it onto the ideal curve.',
         paramKey: 'decoherence',
       },
       {
@@ -438,7 +451,7 @@ const demos: SimModule['demos'] = [
     id: 'ds-single-electrons',
     label: 'Single electrons build interference',
     summary:
-      'Fire the gun one electron at a time, watch individual dots accumulate, then retune λ and d and see Δy = λL/d hold exactly.',
+      'Fire the gun one electron at a time, watch individual dots accumulate, then retune λ and d: the measured spacing tracks λL/d, sitting a little wider than the paraxial estimate because the screen is not in the far field.',
     durationSec: 52,
     keyframes: [
       {
@@ -463,7 +476,7 @@ const demos: SimModule['demos'] = [
       {
         at: 12,
         params: { view: 'screen' },
-        caption: 'Accumulated hits vs d·sinθ = mλ: the theory curve is not fitted, it is predicted from p, d and w.',
+        caption: 'Accumulated hits against d·sinθ = mλ: the curve geometry — λ, d, w and the exact detector angle — is predicted, never fitted.',
       },
       {
         at: 22,
@@ -473,7 +486,7 @@ const demos: SimModule['demos'] = [
       {
         at: 32,
         params: { momentum: 210, separation: 0.28 },
-        caption: 'Now widen the slit spacing d: the fringes crowd together, still exactly λL/d apart.',
+        caption: 'Now widen the slit spacing d: the fringes crowd together, Δy shrinking in proportion to 1/d, and the measured spacing follows it.',
       },
       {
         at: 42,
@@ -491,7 +504,7 @@ const demos: SimModule['demos'] = [
     id: 'ds-which-path',
     label: 'Which-path collapse',
     summary:
-      'Build a crisp interference pattern, then mark one slit per electron and watch V fall to |cos φ| while the histogram turns into the classical two-hump sum.',
+      'Build a crisp interference pattern, then mark one arm per electron and watch the visibility fall off its ceiling towards the classical two-hump sum — then undo it.',
     durationSec: 60,
     keyframes: [
       {
@@ -510,35 +523,35 @@ const demos: SimModule['demos'] = [
           slitWidth: 0.026,
           contrast: 1.1,
         },
-        caption: 'Detector off: both apertures are fed by one coherent wavefront, so V → 1.',
+        caption: 'Detector off: one wavefront feeds both apertures, so the visibility sits at its ceiling.',
       },
       {
         at: 14,
         instant: true,
-        params: { whichPath: true, decoherence: 0.45 },
-        caption: 'Detector on, halfway: φ = (π/2)·δ ⇒ the prediction is V = |cos φ| ≈ 0.71. Keep collecting.',
+        params: { whichPath: true, decoherence: 0.5 },
+        caption: 'Detector on, halfway: φ = (π/2)·δ = π/4 ⇒ the ideal ceiling is V = |cos φ| = 1/√2 ≈ 0.71. Keep collecting.',
       },
       {
         at: 26,
         params: { view: 'screen' },
-        caption: 'The amber prediction curve stays pinned to the data while the fringe depth drops.',
+        caption: 'The amber curve is the far-field form — sinc² envelope × fringes at the depth the screen reports — laid over the raw hits.',
       },
       {
         at: 34,
         instant: true,
         params: { decoherence: 1 },
-        caption: 'Full path information: φ = π/2, so V = 0 and D = 1 — V² + D² = 1, saturated.',
+        caption: 'Full path information: φ = π/2, so D = 1 and the ideal visibility is zero — the complementarity bound saturated.',
       },
       {
         at: 46,
         params: {},
-        caption: 'What remains is the incoherent sum of two single-slit diffraction patterns: no dark bands at all.',
+        caption: 'What is left is nearly the incoherent sum of two single-slit patterns — two broad humps, the bands all but gone.',
       },
       {
         at: 52,
         instant: true,
         params: { whichPath: false, decoherence: 0 },
-        caption: 'Eraser: switch the marker off and the next electrons restore full visibility. Nothing was destroyed.',
+        caption: 'Eraser: switch the marker off and every electron after this instant is emitted unmarked, so the fringes come straight back. Nothing was destroyed.',
       },
     ],
   },

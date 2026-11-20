@@ -172,6 +172,13 @@ export const deBroglieControls: ControlSpec[] = [
     format: (v) => v.toFixed(2),
   },
   {
+    kind: 'toggle',
+    key: 'sound',
+    label: 'Resonance chime',
+    group: 'visuals',
+    help: 'A soft three-partial chime the moment 2πr = nλ snaps shut. Browsers stay silent until you first interact with the stage.',
+  },
+  {
     kind: 'slider',
     key: 'resScale',
     label: 'Render scale',

@@ -87,35 +87,41 @@ export function rgbCss(c: RGB, alpha = 1): string {
   return `rgba(${to255(c.r)}, ${to255(c.g)}, ${to255(c.b)}, ${alpha.toFixed(3)})`;
 }
 
-/** GLSL mirror of the same wheel, injected into fragment shaders. */
-export const GLSL_PHASE_COLORS = /* glsl */ `
-  vec3 q_phaseTwilight(float u) {
-    const vec3 c0 = vec3(0.93, 0.79, 0.72);
-    const vec3 c1 = vec3(0.99, 0.55, 0.55);
-    const vec3 c2 = vec3(0.75, 0.36, 0.66);
-    const vec3 c3 = vec3(0.42, 0.31, 0.72);
-    const vec3 c4 = vec3(0.20, 0.42, 0.83);
-    const vec3 c5 = vec3(0.29, 0.68, 0.86);
-    const vec3 c6 = vec3(0.52, 0.85, 0.72);
-    float t = fract(u) * 6.0;
-    int i = int(floor(t));
-    float f = fract(t);
-    vec3 a = c0; vec3 b = c1;
-    if (i == 1) { a = c1; b = c2; }
-    else if (i == 2) { a = c2; b = c3; }
-    else if (i == 3) { a = c3; b = c4; }
-    else if (i == 4) { a = c4; b = c5; }
-    else if (i >= 5) { a = c5; b = c6; }
-    return mix(a, b, f);
-  }
+/**
+ * GLSL mirror of the same wheel, injected into fragment shaders.
+ *
+ * The stop tables above are the single source of truth: this string is generated
+ * from them, so the CPU canvas and the GPU raymarchers cannot drift into two
+ * different hue wheels (which they had, until the closing segment of each cyclic
+ * ramp was transcribed by hand and dropped).
+ */
+function glslWheel(fnName: string, prefix: string, stops: RGB[]): string {
+  const segments = stops.length - 1;
+  const num = (v: number) => (Number.isInteger(v) ? v.toFixed(1) : String(v));
+  const decl = stops
+    .map((s, i) => `    const vec3 ${prefix}${i} = vec3(${num(s.r)}, ${num(s.g)}, ${num(s.b)});`)
+    .join('\n');
+  const chain = Array.from({ length: segments - 1 }, (_, j) => {
+    const i = j + 1;
+    return `    ${j === 0 ? 'if' : 'else if'} (i == ${i}) { a = ${prefix}${i}; b = ${prefix}${i + 1}; }`;
+  }).join('\n');
+  return [
+    `  vec3 q_phase${fnName}(float u) {`,
+    decl,
+    `    float t = fract(u) * ${segments}.0;`,
+    '    int i = int(floor(t));',
+    '    float f = fract(t);',
+    `    vec3 a = ${prefix}0; vec3 b = ${prefix}1;`,
+    chain,
+    '    return mix(a, b, f);',
+    '  }',
+  ].join('\n');
+}
 
-  vec3 q_phaseCividis(float u) {
-    float t = fract(u);
-    vec3 a = vec3(0.0, 0.13, 0.32);
-    vec3 b = vec3(0.42, 0.46, 0.49);
-    vec3 c = vec3(0.99, 0.92, 0.42);
-    return t < 0.5 ? mix(a, b, t * 2.0) : mix(b, c, (t - 0.5) * 2.0);
-  }
+export const GLSL_PHASE_COLORS = /* glsl */ `
+${glslWheel('Twilight', 'tw', TWILIGHT)}
+
+${glslWheel('Cividis', 'cv', CIVIDIS)}
 
   vec3 q_phaseColor(float angle, int palette) {
     float u = angle / 6.283185307179586 + 0.5;

@@ -18,6 +18,7 @@ import {
   kOfEnergy,
   massOf,
   packetMeanT,
+  tCurveOf,
   TUN_BOX_AU,
 } from './model';
 import { evanescentKappa } from '@/engine/physics/splitStepFFT';
@@ -29,7 +30,7 @@ export function tunnelMath(p: SimParams): SimMathContent {
   const k0 = kOfEnergy(e0, mass);
   const kappa = evanescentKappa(e0, g.v0, mass, 1);
   const below = e0 < g.v0;
-  const k2 = below ? 0 : Math.sqrt((2 * mass * (e0 - g.v0)) / 1);
+  const k2 = below ? 0 : Math.sqrt(2 * mass * (e0 - g.v0));
   const tExact = analyticalT(p, e0);
   const fold = packetMeanT(p);
   const v = groupVelocity(e0, mass);
@@ -37,6 +38,9 @@ export function tunnelMath(p: SimParams): SimMathContent {
   const dx = TUN_BOX_AU / n;
   const dt = clampNum(pNum(p, 'dt', 0.002), 2e-4, 0.01);
   const a = g.a;
+  const resonances = tCurveOf(p).resonances;
+  const e1 = resonances.length ? resonances[0] : 0;
+  const eNaive = g.gap > 0 ? (Math.PI ** 2) / (2 * mass * g.gap * g.gap) : 0;
 
   return {
     formula: [
@@ -73,11 +77,11 @@ export function tunnelMath(p: SimParams): SimMathContent {
         note: 'The threshold limit of both branches — finite, continuous, and the only place the sinh and sin formulas agree.',
       },
       {
-        tex: 'T_{\\text{double}} = 1 \\iff k_{\\text{well}}\\,\\text{gap} = n\\pi,\\qquad E_n = \\frac{n^2\\pi^2\\hbar^2}{2m\\,\\text{gap}^2},\\qquad k_{\\text{well}} = \\frac{\\sqrt{2mE}}{\\hbar}',
+        tex: 'T_{\\text{double}} = 1 \\iff k_{\\text{well}}\\,\\text{gap} + \\varphi_r(E) = n\\pi,\\qquad r = |r|e^{i\\varphi_r},\\qquad k_{\\text{well}} = \\frac{\\sqrt{2mE}}{\\hbar}',
         display: true,
         note: g.kind === 'double'
-          ? `gap = ${g.gap.toFixed(3)} a.u. puts the first cavity modes at ${g.gap > 0 ? (((Math.PI ** 2) / (2 * mass * g.gap * g.gap)).toFixed(3)) : '—'} a.u. — exactly where the plotted curve touches T = 1.`
-          : 'Only the double barrier has them: switch geometry to see the Fabry–Pérot comb.',
+          ? `The round trip through the well must return in phase, and \\varphi_r is the phase picked up reflecting off one barrier. The exact curve shown touches T = 1 at ${resonances.length ? resonances.slice(0, 3).map((e) => e.toFixed(3)).join(', ') : '—'} a.u.; the infinite-wall estimate E_n = n\\u00b2\\u03c0\\u00b2/2m\\u00b7gap\\u00b2 would say ${eNaive.toFixed(3)} for the first one — the difference is the wave spilling into the barrier.`
+          : `The single barrier has its own T = 1 points above V\\u2080 (k\\u2082a = n\\u03c0): ${resonances.length ? resonances.slice(0, 3).map((e) => e.toFixed(2)).join(', ') : 'none inside the plotted window'} a.u. Switch to the double barrier for the full Fabry\\u2013P\\u00e9rot comb.`,
       },
       {
         tex: 'I \\;\\propto\\; V\\,T(E_\\!F, d) \\;\\approx\\; V\\,e^{-2\\kappa d},\\qquad \\frac{d\\ln I}{dd} = -2\\kappa = ' + (-2 * Math.max(kappa, 1e-9)).toFixed(2) + '\\ \\mathrm{a.u.}^{-1}',
@@ -96,10 +100,11 @@ export function tunnelMath(p: SimParams): SimMathContent {
       { label: 'decay', value: below ? `κ = ${kappa.toFixed(4)}, 2κa = ${(2 * kappa * a).toFixed(3)}` : 'E₀ > V₀ (propagating)' },
       { label: 'exact T(E₀)', value: tExact.toExponential(4) },
       { label: 'packet ⟨T⟩', value: `${fold.mean.toExponential(4)} (ΔE ≈ ${fold.spread.toFixed(2)})` },
+      { label: 'T = 1 modes', value: resonances.length ? `${resonances.length} in the window, first at ${e1.toFixed(3)} a.u.` : 'none in the window' },
       { label: 'step', value: `Δt = ${dt.toFixed(4)}, phase Δt·E = ${(dt * (g.v0 + e0)).toFixed(4)}` },
     ],
     phaseLegend:
-      'In the beam panel the hue is arg ψ on the cyclic twilight wheel and the luminance is |ψ|², so colour tells you what is *moving*: the incident and transmitted packets sweep the wheel as they travel, while the evanescent hump inside the barrier holds a single hue — it oscillates in place and carries no net current. Cyan/rose curves are Re ψ / Im ψ when the overlay is on. In the T(E) panel the amber region below V₀ is classically forbidden, the sky curve is the exact theory, the vertical marker is E₀, the tick marks are the k·gap = nπ resonances, and the faint filled band is the packet’s own |φ(k)|² energy distribution — where it overlaps a resonance, that is what the beam actually does.',
+      'In the beam panel the hue is arg ψ on the cyclic twilight wheel and the luminance is |ψ|², so colour tells you what is *moving*: the incident and transmitted packets sweep the wheel as they travel, while the evanescent hump inside the barrier holds a single hue — it oscillates in place and carries no net current. Cyan/rose curves are Re ψ / Im ψ when the overlay is on. In the T(E) panel the amber region below V₀ is classically forbidden, the sky curve is the exact theory, the vertical marker is E₀, the tick marks are the energies where the exact curve reaches T = 1, and the faint filled band is the packet’s own |φ(k)|² energy distribution — where it overlaps a resonance, that is what the beam actually does.',
     intuition:
       'A classical particle with E < V₀ bounces. A quantum state cannot: $\\psi$ and $\\psi\'$ must both be continuous, and the curvature equation $\\psi\'\' = 2m(V-E)\\psi/\\hbar^2$ says that where $V > E$ the curvature has the *same sign as the value* — so inside the barrier the solution is not a wave but a real exponential, $e^{\\pm\\kappa x}$. The only way to match a sinusoid on the left to a sinusoid on the right through that segment is for the transmitted amplitude to be suppressed by $e^{-\\kappa a}$: the barrier does not block the wave, it *attenuates* it, and it attenuates it exponentially in both width and $\\sqrt{V_0-E}$. That single fact is why alpha decay has a 10¹⁷-year spread of half-lives across a factor of 3 in energy, why a 0.1 nm tip retraction changes an STM current tenfold, and why a wavepacket that spends a femtosecond inside a barrier can still show up on the other side. Two more surprises hide in the same algebra. Above the barrier the sinh becomes a $\\sin$, so T *oscillates* instead of simply saturating at 1 — a faster electron can be more likely to bounce. And with two barriers, the reflected waves from each interface interfere: whenever an integer number of half-wavelengths fits in the middle well the multiple reflections cancel exactly and T = 1, perfectly transparent, even though each barrier alone is opaque. The simulation shows you all of this by solving nothing but two FFTs per step — the theory curve beside it is computed exactly, and they agree to the width of a line.',
     derivation: [
@@ -184,11 +189,12 @@ export function tunnelMath(p: SimParams): SimMathContent {
             note: 'Identical to the Airy formula of a Fabry–Pérot interferometer, with probability amplitudes in place of field amplitudes. Matter waves interfere exactly like light.',
           },
           {
-            text: 'When $kg = n\\pi$ the denominator is $(1 - R)^2 = T_1T_2$ and $T = 1$ **exactly**, however opaque the individual barriers are:',
+            text: 'The denominator has modulus $1 - R$ exactly when the round-trip phase $2kg + 2\\varphi_r$ is a multiple of $2\\pi$ — i.e. $kg + \\varphi_r = n\\pi$, where $\\varphi_r = \\arg r$ is the phase shift on reflection from a *single* barrier. Then it equals $(1 - R)^2 = T_1T_2$ and $T = 1$ **exactly**, however opaque each barrier is:',
             math: [
-              { tex: `E_n = \\frac{n^2\\pi^2\\hbar^2}{2m\\,\\text{gap}^2}${g.kind === 'double' ? `,\\qquad E_1 = ${((Math.PI ** 2) / (2 * mass * g.gap * g.gap)).toFixed(3)}\\ \\text{a.u.}` : ''}`, display: true },
+              { tex: `k\\,\\text{gap} + \\varphi_r(E) = n\\pi \\;\\;\\xrightarrow{\\;\\varphi_r \\to 0\\;}\\;\\; E_n = \\frac{n^2\\pi^2\\hbar^2}{2m\\,\\text{gap}^2}${resonances.length ? `,\\qquad E_1^{\\text{exact}} = ${e1.toFixed(3)}\\ \\text{a.u.}` : ''}`, display: true },
             ],
-            note: 'Resonant tunneling — the physics of the double-barrier diode, of alpha preformation in nuclei, and of the Ramsauer–Townsend effect in noble gases (which is a *s-wave* version of the same cancellation). The plot ticks mark these energies; the curve touches T = 1 there to within line width.',
+            note: `Resonant tunneling — the physics of the double-barrier diode, of alpha preformation in nuclei, and of the Ramsauer–Townsend effect in noble gases (which is a *s-wave* version of the same cancellation). $\\varphi_r$ only vanishes for an infinitely thin (or infinitely transparent) barrier, so the hard-wall formula is a limit, not the answer: at this geometry it would sit at ${eNaive.toFixed(3)} a.u. while the structure really resonates at ${resonances.length ? e1.toFixed(3) : '—'} a.u., because the evanescent tails widen the cavity by about $1/\\kappa$ per barrier. The plot ticks are the exact numbers.`,
+
           },
           {
             text: 'Detune by half a level and the same structure becomes near-opaque. The resonance width $\\Gamma$ is set by the leakage rate through the barriers, so a thin barrier gives a broad, forgiving peak and a thick one a needle.',
@@ -232,14 +238,14 @@ export function tunnelMath(p: SimParams): SimMathContent {
         question:
           'Switch to the double barrier. Park E₀ on the first resonance, then sweep the well separation `gap` and predict where the resonance will go before you move the slider. What happens to the *height* of the peak, and why?',
         hint:
-          'The cavity condition is k·gap = nπ with k = √(2mE)/ℏ, so E₁ ∝ 1/gap². Peak height is set by the barrier *transmission*, not by the cavity length.',
+          'The cavity condition is k·gap + φ_r = nπ with k = √(2mE)/ℏ, so E₁ grows roughly like 1/gap² (barrier penetration pulls it down a little). Peak height is set by the barrier *transmission*, not by the cavity length.',
         answer:
-          `E₁ = π²ℏ²/(2m·gap²) — at gap = ${g.gap.toFixed(2)} a.u. that is ${((Math.PI ** 2) / (2 * mass * g.gap * g.gap)).toFixed(3)} a.u.; halving the separation quadruples E₁, and doubling it divides E₁ by four. The peak stays pinned at exactly T = 1 no matter how long the well is (tune ` +
+          `The hard-wall estimate E₁ = π²ℏ²/(2m·gap²) gives ${eNaive.toFixed(3)} a.u. at gap = ${g.gap.toFixed(2)}, and halving the separation quadruples it — but the *exact* first resonance of this structure is at ${resonances.length ? e1.toFixed(3) : '—'} a.u., below that, because the wave penetrates each barrier by roughly 1/κ = ${(1 / Math.max(kappa, 1e-6)).toFixed(2)} a.u. and the cavity is effectively longer. Halving the separation quadruples E₁ either way. The peak stays pinned at exactly T = 1 no matter how long the well is (tune ` +
           '`packetMeanT` by narrowing Δk and you will see the beam follow the same rule), because the condition for cancelling the internal reflections involves only the round-trip *phase*. What does change with gap is the *width* of the resonance: the leakage rate per attempt is fixed, so a longer cavity means more attempts per unit energy and a narrower needle — the time–energy uncertainty of a metastable state, visible on a slider. The simulated packet only reaches T = 1 if its ΔE is small compared with that width: exactly why the momentum-spread slider exists.',
         paramKey: 'gap',
       },
     ],
-  );
+  };
 }
 
 export default tunnelMath;

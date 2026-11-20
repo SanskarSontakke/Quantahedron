@@ -257,7 +257,13 @@ void main() {
 /**
  * Visible field: phase sets hue through the shared twilight wheel, |ψ|² sets
  * luminance — never the reverse, so a bright band is always real probability.
- * Mirrors `densityPhaseColor()` in `src/lib/colorMap.ts`.
+ * The tone mapping (`log(1 + 900·c·ρ) / log(1 + 900·c)`, then `lum^1.6 × 1.35`
+ * over the same background) is an exact mirror of `paint()` in
+ * `src/simulations/double-slit-2d/cpu.ts`; the hue comes from the platform-wide
+ * `GLSL_PHASE_COLORS` wheel, whose cyclic wrap is folded into the last segment
+ * rather than given one of its own the way `sampleRamp()` in `src/lib/colorMap.ts`
+ * does — the same choice every GPU path in this app makes, worth ≤ 0.41 of a
+ * channel and only near arg ψ = ±π.
  */
 export const DS_RENDER_FRAG = /* glsl */ `#version 300 es
 precision highp float;

@@ -18,6 +18,7 @@ import { useAnimationClock } from '@/hooks/useAnimationClock';
 import { densityPhaseColor, phaseColor, rgbCss } from '@/lib/colorMap';
 import { pBool, pNum, pStr, useSimStore } from '@/store/useSimStore';
 import type { SimParams, SimSlug } from '@/simulations/types';
+import { chime, releaseChime } from './resonance';
 import { ScalePanel } from './ScalePanel';
 import {
   buildup,
@@ -134,6 +135,9 @@ export default function DeBroglieCanvas({ slug }: { slug: SimSlug }) {
     return () => ro.disconnect();
   }, [resize]);
 
+  /* the AudioContext is a module singleton — release it with the viewport */
+  useEffect(() => () => releaseChime(), []);
+
   /* --------------------------------- render -------------------------------- */
   const drawOrbit = useCallback(
     (ctx: CanvasRenderingContext2D, dt: number, elapsed: number) => {
@@ -193,7 +197,10 @@ export default function DeBroglieCanvas({ slug }: { slug: SimSlug }) {
 
       // ── resonance flash on lock acquisition ──────────────────────────────
       const resonant = quality > 0.985;
-      if (resonant && !wasResonantRef.current) flashRef.current = 1;
+      if (resonant && !wasResonantRef.current) {
+        flashRef.current = 1;
+        if (pBool(p, 'sound', true)) chime(n);
+      }
       wasResonantRef.current = resonant;
       flashRef.current = Math.max(0, flashRef.current - dt * 1.7);
       const flash = flashRef.current + (resonant ? 0.22 : 0);
