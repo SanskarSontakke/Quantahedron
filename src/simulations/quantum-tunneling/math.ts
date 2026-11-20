@@ -80,11 +80,11 @@ export function tunnelMath(p: SimParams): SimMathContent {
         tex: 'T_{\\text{double}} = 1 \\iff k_{\\text{well}}\\,\\text{gap} + \\varphi_r(E) = n\\pi,\\qquad r = |r|e^{i\\varphi_r},\\qquad k_{\\text{well}} = \\frac{\\sqrt{2mE}}{\\hbar}',
         display: true,
         note: g.kind === 'double'
-          ? `The round trip through the well must return in phase, and \\varphi_r is the phase picked up reflecting off one barrier. The exact curve shown touches T = 1 at ${resonances.length ? resonances.slice(0, 3).map((e) => e.toFixed(3)).join(', ') : '—'} a.u.; the infinite-wall estimate E_n = n\\u00b2\\u03c0\\u00b2/2m\\u00b7gap\\u00b2 would say ${eNaive.toFixed(3)} for the first one — the difference is the wave spilling into the barrier.`
-          : `The single barrier has its own T = 1 points above V\\u2080 (k\\u2082a = n\\u03c0): ${resonances.length ? resonances.slice(0, 3).map((e) => e.toFixed(2)).join(', ') : 'none inside the plotted window'} a.u. Switch to the double barrier for the full Fabry\\u2013P\\u00e9rot comb.`,
+          ? `The round trip through the well must return in phase, and φ_r is the phase picked up reflecting off one barrier. The exact curve shown touches T = 1 at ${resonances.length ? resonances.slice(0, 3).map((e) => e.toFixed(3)).join(', ') : '—'} a.u.; the infinite-wall estimate Eₙ = n²π²/(2m·gap²) would say ${eNaive.toFixed(3)} for the first one — the difference is the wave spilling into the barrier.`
+          : `The single barrier has its own T = 1 points above V₀ (k₂a = nπ): ${resonances.length ? resonances.slice(0, 3).map((e) => e.toFixed(2)).join(', ') : 'none inside the plotted window'} a.u. Switch to the double barrier for the full Fabry–Pérot comb.`,
       },
       {
-        tex: 'I \\;\\propto\\; V\\,T(E_\\!F, d) \\;\\approx\\; V\\,e^{-2\\kappa d},\\qquad \\frac{d\\ln I}{dd} = -2\\kappa = ' + (-2 * Math.max(kappa, 1e-9)).toFixed(2) + '\\ \\mathrm{a.u.}^{-1}',
+        tex: 'I \\;\\propto\\; V\\,T(E_{\\text{F}}, d) \\;\\approx\\; V\\,e^{-2\\kappa d},\\qquad \\frac{d\\ln I}{dd} = -2\\kappa = ' + (-2 * Math.max(kappa, 1e-9)).toFixed(2) + '\\ \\mathrm{a.u.}^{-1}',
         display: true,
         note: `The STM transfer function. With this barrier the current changes by a factor of ${Math.exp(2 * kappa * 1).toFixed(1)} per additional ångström-scale å (1 a.u. here), which is why a feedback loop holding I fixed can read height to ~0.01 a.u.`,
       },
@@ -219,7 +219,7 @@ export function tunnelMath(p: SimParams): SimMathContent {
             note: 'In these units the drawn barrier gives 2κ = ' + (2 * kappa).toFixed(2) + ' a.u.⁻¹, i.e. a factor ' + Math.exp(2 * kappa).toFixed(1) + ' per a.u. of gap.',
           },
           {
-            text: 'The feedback loop therefore trades an exponentially sensitive current for a *linear* height signal: hold $I = I_0$ and the tip trajectory is $d(x) \\approx \\Phi(x)/eV + \\text{const}$ — it images the local work function and the frontier orbitals, not the nuclear positions. Turn on STM mode and the panel shows both traces: the true adsorbate profile and the apparent one the microscope reports. With electronic contrast $> 0$ they differ by tens of percent, which is the whole reason interpreting an STM image needs theory.',
+            text: 'The feedback loop therefore trades an exponentially sensitive current for a *linear* height signal: hold $I = I_0$ and the tip trajectory is $d(x) \\approx \\Phi(x)/eV + \\text{const}$ — it images the local work function and the frontier orbitals, not the nuclear positions. Turn on STM mode and the panel shows both traces: the true adsorbate profile and the apparent one the microscope reports. With electronic contrast $> 0$ the apparent bumps come out several times taller than the true ones — at the defaults a $0.45$ a.u. adsorbate is reported as $1.35$ a.u. — which is the whole reason interpreting an STM image needs theory.',
           },
         ],
       },

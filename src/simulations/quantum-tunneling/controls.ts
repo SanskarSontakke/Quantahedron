@@ -55,7 +55,7 @@ export const tunnelControls: ControlSpec[] = [
     step: 0.005,
     format: (v) => `${(v * 24).toFixed(2)} a.u.`,
     visibleIf: (p) => barrierOf(p) === 'double',
-    help: 'Fabry–Pérot condition for perfect transmission: k_well·gap = nπ.',
+    help: 'Fabry–Pérot condition for perfect transmission: k·gap + φ_r(E) = nπ. The reflection phase φ_r pulls every mode below the hard-wall value n²π²/2m·gap².',
   },
   {
     kind: 'slider',

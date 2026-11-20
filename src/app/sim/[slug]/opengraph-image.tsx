@@ -106,8 +106,7 @@ export default async function SimOpenGraphImage({
             {meta.tagline}
           </div>
           <div style={{ fontSize: 21, color: '#9fb0cc', maxWidth: 900, lineHeight: 1.45 }}>
-            {meta.description.slice(0, 150)}
-            {meta.description.length > 150 ? '…' : ''}
+            {meta.description.length > 150 ? `${meta.description.slice(0, 150)}…` : meta.description}
           </div>
         </div>
 

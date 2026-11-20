@@ -245,6 +245,15 @@ export function wkbT(p: SimParams, e: number): number {
 export function resonanceEnergies(p: SimParams, limit = eMaxOf(p), samples = 1200): number[] {
   const f = (e: number): number => analyticalT(p, e);
   const out: number[] = [];
+  const refine = (lo: number, hi: number): number => {
+    for (let it = 0; it < 60; it++) {
+      const pa = lo + (hi - lo) / 3;
+      const pb = hi - (hi - lo) / 3;
+      if (f(pa) < f(pb)) lo = pa;
+      else hi = pb;
+    }
+    return 0.5 * (lo + hi);
+  };
   let ePrev = limit / samples;
   let tPrev = f(ePrev);
   let eLeft = 0;
@@ -252,17 +261,17 @@ export function resonanceEnergies(p: SimParams, limit = eMaxOf(p), samples = 120
   for (let i = 2; i <= samples; i++) {
     const eRight = (limit * i) / samples;
     const tRight = f(eRight);
-    if (tPrev > tLeft && tPrev >= tRight && tPrev > 1 - 1e-6) {
-      let lo = eLeft;
-      let hi = eRight;
-      for (let it = 0; it < 50; it++) {
-        const pa = lo + (hi - lo) / 3;
-        const pb = hi - (hi - lo) / 3;
-        if (f(pa) < f(pb)) lo = pa;
-        else hi = pb;
+    /*
+     * Bracket on any crest taller than half height, *then* refine and demand T = 1.
+     * Gating on "T ≈ 1" at the sample points would miss every narrow resonance: with
+     * a spacing of limit/samples a Lorentzian of width Γ is sampled well off its
+     * centre and never reads 1.
+     */
+    if (tPrev > tLeft && tPrev >= tRight && tPrev > 0.5) {
+      const r = refine(eLeft, eRight);
+      if (f(r) > 1 - 1e-9 && (out.length === 0 || r - out[out.length - 1] > (2 * limit) / samples)) {
+        out.push(r);
       }
-      const r = 0.5 * (lo + hi);
-      if (f(r) > 1 - 1e-6) out.push(r);
     }
     eLeft = ePrev;
     tLeft = tPrev;
@@ -404,8 +413,11 @@ export function surfaceHeight(uu: number, amp: number): number {
 
 /**
  * Constant-current feedback: over an atom the barrier is both *narrower* by h and
- * *lower* by `contrast·h`, so the tip must retract to keep I = I₀. The apparent
- * profile is what an STM actually reports, and it can overshoot the true one.
+ * *lower* by `contrast·h`, so the tip must retract to hold I = I₀. The feedback
+ * reports the tip's absolute height relative to the flat-plane set point,
+ * `appH = h + (a − d0)`: with `contrast = 0` the retraction vanishes and the
+ * apparent profile is exactly the true one, while any electronic contrast makes
+ * atoms look *taller* than they are, because the exponential beats geometry.
  */
 export function stmScan(p: SimParams, samples = 96): StmScan {
   const u = new Float64Array(samples);
@@ -438,7 +450,7 @@ export function stmScan(p: SimParams, samples = 96): StmScan {
       else hi = mid;
     }
     const a = 0.5 * (lo + hi);
-    appH[i] = d0 - a;
+    appH[i] = h + (a - d0);
   }
   // Sensitivity of the set point: d ln I / d(d) = 2κ.
   slope = 2 * evanescentKappa(e0, g.v0, mass, hbarOf());

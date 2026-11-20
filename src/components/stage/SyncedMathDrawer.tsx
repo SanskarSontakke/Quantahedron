@@ -52,7 +52,9 @@ export const SyncedMathDrawer = memo(function SyncedMathDrawer({
               <div key={i} className={cx('text-ink', f.display ? 'text-[15px]' : 'text-[13px]')}>
                 <Tex tex={f.tex} display={f.display} />
                 {f.note ? (
-                  <div className="mt-0.5 text-[11px] text-ink-faint">{f.note}</div>
+                  <div className="mt-0.5 text-[11px] text-ink-faint">
+                    <MathText text={f.note} />
+                  </div>
                 ) : null}
               </div>
             ))}
@@ -165,7 +167,16 @@ export const SyncedMathDrawer = memo(function SyncedMathDrawer({
           {open === 'Interactive Challenge' ? (
             <ul className="space-y-2.5">
               {content.challenge.map((c, i) => (
-                <ChallengeRow key={i} {...c} accent={module.meta.accent} />
+                <ChallengeRow
+                  key={i}
+                  {...c}
+                  accent={module.meta.accent}
+                  paramLabel={
+                    c.paramKey
+                      ? module.controls.find((ctl) => ctl.key === c.paramKey)?.label ?? c.paramKey
+                      : undefined
+                  }
+                />
               ))}
             </ul>
           ) : null}
@@ -180,11 +191,15 @@ function ChallengeRow({
   hint,
   answer,
   accent,
+  paramKey,
+  paramLabel,
 }: {
   question: string;
   hint: string;
   answer: string;
   accent: string;
+  paramKey?: string;
+  paramLabel?: string;
 }) {
   const [revealed, setRevealed] = useState(false);
   return (
@@ -195,6 +210,15 @@ function ChallengeRow({
       <p className="mt-1 text-[11.5px] text-ink-faint">
         <MathText text={hint} />
       </p>
+      {paramKey && paramLabel ? (
+        <p className="mt-1 text-[11px] text-ink-faint">
+          Hands-on — sweep{' '}
+          <span className="font-mono text-ink-dim" data-param={paramKey}>
+            {paramLabel}
+          </span>{' '}
+          in the inspector to test it.
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={() => setRevealed((v) => !v)}
