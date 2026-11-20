@@ -1,0 +1,171 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------
+   Quantahedron design tokens — "Observatory Glass"
+   Deep matte obsidian, elevated glass surfaces, perceptually-uniform
+   phase colour science (OKLCH twilight-cyclic by default).
+------------------------------------------------------------------- */
+
+@theme {
+  --color-obsidian: #06080d;
+  --color-obsidian-2: #0a0e17;
+  --color-abyss: #03050a;
+  --color-glass: rgba(15, 20, 30, 0.72);
+  --color-glass-strong: rgba(19, 26, 38, 0.88);
+  --color-hairline: rgba(148, 163, 184, 0.16);
+  --color-hairline-bright: rgba(148, 163, 184, 0.32);
+
+  --color-ink: #e8eefc;
+  --color-ink-dim: #9fb0cc;
+  --color-ink-faint: #6b7d99;
+
+  --color-plasma: #5eead4; /* teal accent — probability density */
+  --color-flux: #818cf8; /* indigo accent — angular structure */
+  --color-solar: #fbbf24; /* amber accent — energy / photons */
+  --color-collapse: #fb7185; /* rose accent — measurement */
+  --color-quantum: #34d399; /* valid / within bound */
+
+  --font-sans: var(--font-geist-sans), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-stage: 20px;
+
+  --shadow-glass: 0 18px 60px -20px rgba(0, 0, 0, 0.85);
+  --shadow-lift: 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --stage-h: 78vh;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-obsidian);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* Live telemetry must never jitter: tabular numerals everywhere numeric. */
+  .font-mono,
+  table,
+  [data-telemetry] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+
+  ::selection {
+    background: rgba(94, 234, 212, 0.28);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-plasma);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.22);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.4);
+    background-clip: padding-box;
+  }
+}
+
+@layer components {
+  .glass {
+    background: var(--color-glass);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--color-hairline);
+  }
+
+  .glass-pill {
+    background: var(--color-glass);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--color-hairline);
+    border-radius: 999px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    color: var(--color-ink-dim);
+  }
+
+  .stage-frame {
+    border-radius: var(--radius-stage);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: var(--color-obsidian);
+    box-shadow: var(--shadow-glass);
+  }
+
+  .kbd {
+    @apply rounded border border-hairline-bright bg-obsidian-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-dim;
+  }
+}
+
+/* ---------------------------------------------------------------
+   Accessibility themes — toggled from the shell (persisted).
+--------------------------------------------------------------- */
+html[data-palette='cividis'] {
+  --color-plasma: #ffea33;
+  --color-flux: #00518a;
+}
+
+html[data-contrast='light'] {
+  --color-obsidian: #f5f7fb;
+  --color-obsidian-2: #ffffff;
+  --color-abyss: #e8ecf4;
+  --color-glass: rgba(255, 255, 255, 0.86);
+  --color-glass-strong: rgba(255, 255, 255, 0.95);
+  --color-hairline: rgba(15, 23, 42, 0.14);
+  --color-hairline-bright: rgba(15, 23, 42, 0.28);
+  --color-ink: #0b1220;
+  --color-ink-dim: #3f4c63;
+  --color-ink-faint: #6a7c99;
+  color-scheme: light;
+}
+
+html[data-contrast='light'] body {
+  background: var(--color-obsidian);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* KaTeX sizing harmonised with the UI scale. */
+.katex {
+  font-size: 1.03em;
+}
+.katex-display {
+  margin: 0.35em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
