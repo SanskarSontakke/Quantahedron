@@ -37,7 +37,7 @@ export const tunnelingDefaults: SimParams = {
   stmMode: false,
   stmBias: 0.4,
   stmHeight: 0.05, // tip–sample set point, fraction of the domain
-  stmAmp: 0.45, // adsorbate height, fraction of the set point
+  stmAmp: 0.45, // true adsorbate height in a.u. (the flat plane sits at h = 0)
   stmContrast: 0.35, // barrier lowering over an atom
   colorPhase: true,
   /** Bumped by the on-canvas "launch" chip to re-fire the packet unchanged. */
