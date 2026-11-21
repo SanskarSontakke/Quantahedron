@@ -15,6 +15,14 @@ const config = [
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
+  {
+    /* the verification harness in scripts/ is plain CommonJS run by Node */
+    files: ['scripts/**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-undef': 'off',
+    },
+  },
 ];
 
 export default config;

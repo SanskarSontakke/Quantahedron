@@ -2,13 +2,15 @@
   "name": "quantahedron",
   "version": "1.0.0",
   "private": true,
-  "description": "Quantahedron \u2014 interactive quantum physics, solved in real time in the browser.",
+  "license": "MIT",
+  "description": "Quantahedron — interactive quantum physics, solved in real time in the browser.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "verify": "node scripts/audit-contracts.cjs && node scripts/url-roundtrip.cjs && node scripts/physics-checks.cjs",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {

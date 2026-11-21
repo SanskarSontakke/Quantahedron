@@ -1,0 +1,163 @@
+name: CI
+
+# Every push and every pull request gets the same gates the project is built on:
+# lint, strict types, the headless simulation contract audit, solver physics
+# regression checks, and a real production build whose prerendered routes are
+# then probed over HTTP.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint · types · sim contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.x', '22.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint (next/core-web-vitals + next/typescript)
+        run: npm run lint
+
+      - name: TypeScript strict
+        run: npm run typecheck
+
+      - name: Contract audit + URL round-trip + solver physics
+        run: npm run verify
+
+  build:
+    name: Production build · prerendered routes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: next build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Serve the build and probe every route
+        run: |
+          set -uo pipefail
+          export NEXT_TELEMETRY_DISABLED=1
+          npx next start -p 3100 >/tmp/next.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+
+          ready=0
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3100/; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo '::error::next start never became ready'
+            cat /tmp/next.log
+            exit 1
+          fi
+
+          # The PRD's retired internal working title must never reach a rendered
+          # page. It is assembled at runtime so the literal string does not live
+          # in this repository either.
+          banned=$(printf '\x45igen\x4c\x61\x62')
+
+          fail=0
+          check() {
+            path="$1"; want="${2:-200}"; type="${3:-text/html}"
+            resp=$(curl -s -o /tmp/body -w '%{http_code} %{content_type}' --max-time 30 "http://127.0.0.1:3100${path}")
+            code=${resp%% *}; ctype=${resp#* }
+            if [ "$code" != "$want" ]; then echo "::error::${path} -> HTTP ${code} (expected ${want})"; fail=1; return; fi
+            if ! printf '%s' "$ctype" | grep -qi "$type"; then echo "::error::${path} -> content-type ${ctype} (expected ${type})"; fail=1; return; fi
+            echo "ok ${code} ${path}"
+          }
+
+          guard() {
+            path="$1"
+            if ! curl -fsS --max-time 30 "http://127.0.0.1:3100${path}" -o /tmp/page; then
+              echo "::error::${path} could not be fetched"; fail=1; return
+            fi
+            if grep -qi -- "$banned" /tmp/page; then
+              echo "::error::${path} leaks the retired internal codename"; fail=1; return
+            fi
+          }
+
+          echo '--- infrastructure routes ---'
+          check /sitemap.xml '200' application/xml
+          check /robots.txt '200' text/plain
+          check /manifest.webmanifest '200' application/manifest
+          check /icon.svg '200' image/svg
+          check /sim/does-not-exist 404
+          check /learn/does-not-exist 404
+
+          echo '--- every URL listed in the sitemap ---'
+          curl -fsS --max-time 30 http://127.0.0.1:3100/sitemap.xml -o /tmp/sitemap
+          count=0
+          for loc in $(grep -oE '<loc>[^<]+</loc>' /tmp/sitemap | sed -E 's#</?loc>##g'); do
+            p=$(printf '%s' "$loc" | sed -E 's#^https?://[^/]+##')
+            check "$p"
+            count=$((count + 1))
+          done
+          echo "sitemap routes probed: ${count}"
+          if [ "$count" -lt 15 ]; then echo "::error::sitemap only lists ${count} routes"; fail=1; fi
+
+          echo '--- per-simulation OG images and content guards ---'
+          for slug in $(ls -d src/simulations/*/ | xargs -n1 basename); do
+            check "/sim/${slug}/opengraph-image" '200' image/png
+            if ! grep -q "/sim/${slug}<" /tmp/sitemap; then
+              echo "::error::/sim/${slug} is missing from the sitemap"; fail=1
+            fi
+            guard "/sim/${slug}"
+            if ! grep -q "${slug}" /tmp/page; then
+              echo "::error::/sim/${slug} does not render its own slug"; fail=1
+            fi
+          done
+
+          echo '--- homepage ---'
+          guard /
+          if ! grep -q 'Quantahedron' /tmp/page; then
+            echo '::error::homepage does not name Quantahedron'; fail=1
+          fi
+
+          if [ "$fail" -ne 0 ]; then echo '--- next start log ---'; cat /tmp/next.log; exit 1; fi
+          echo 'All routes healthy.'
+
+      - name: Upload next start log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-start-log
+          path: /tmp/next.log
+          if-no-files-found: ignore
