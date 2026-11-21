@@ -84,6 +84,10 @@ export function generateStaticParams(): { slug: SimSlug }[] {
   return SIM_SLUGS.map((slug) => ({ slug }));
 }
 
+// Only the registered slugs exist. Without this, an unlisted slug would be
+// rendered on demand and served as a soft 200 instead of a real 404.
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {

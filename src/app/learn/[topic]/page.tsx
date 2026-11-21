@@ -15,6 +15,9 @@ export function generateStaticParams(): { topic: string }[] {
   return CONCEPT_SLUGS.map((topic) => ({ topic }));
 }
 
+// Same reason as the simulation route: unlisted topics must 404, not soft-200.
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {
